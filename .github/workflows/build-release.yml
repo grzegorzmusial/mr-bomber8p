@@ -22,13 +22,13 @@ jobs:
         dotnet-version: "8.0.x"
 
     - name: Restore
-      run: dotnet restore MrBomber/MrBomber.csproj
+      run: dotnet restore MrBoom/MrBoom.csproj
 
     - name: Build
-      run: dotnet build MrBomber/MrBomber.csproj -c Release --no-restore
+      run: dotnet build MrBoom/MrBoom.csproj -c Release --no-restore
 
     - name: Publish
-      run: dotnet publish MrBomber/MrBomber.csproj -c Release -r win-x64 --self-contained false -o publish
+      run: dotnet publish MrBoom/MrBoom.csproj -c Release -r win-x64 --self-contained false -o publish
 
     - name: Create ZIP
       run: |
