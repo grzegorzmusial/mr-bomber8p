@@ -22,20 +22,17 @@ jobs:
         dotnet-version: "8.0.x"
 
     - name: Restore
-      working-directory: MrBomber8P
-      run: dotnet restore
+      run: dotnet restore MrBomber8p/MrBomber8P.csproj
 
     - name: Build
-      working-directory: MrBomber8P
-      run: dotnet build -c Release --no-restore
+      run: dotnet build MrBomber8p/MrBomber8P.csproj -c Release --no-restore
 
     - name: Publish
-      working-directory: MrBomber8P
-      run: dotnet publish -c Release -r win-x64 --self-contained false -o publish
+      run: dotnet publish MrBomber8p/MrBomber8P.csproj -c Release -r win-x64 --self-contained false -o publish
 
     - name: Create ZIP
       run: |
-        powershell Compress-Archive -Path MrBomber8P\publish\* -DestinationPath mr-bomber8p-win64.zip
+        powershell Compress-Archive -Path publish\* -DestinationPath mr-bomber8p-win64.zip
 
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v2
