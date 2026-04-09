@@ -43,6 +43,7 @@ namespace MrBoom
             unjoinedControllers = new List<IController>(controllers);
             joinedControllers = new List<IController>();
             nameGenerator = new NameGenerator(Terrain.Random);
+            nameGenerator.InitializeAsync();
             players = new List<IPlayerState>();
             teamMode = settings.TeamMode;
 
@@ -131,7 +132,7 @@ namespace MrBoom
 
         protected IPlayerState CreatePlayer(int index, IController controller)
         {
-            return new HumanPlayerState(controller, index, nameGenerator.GenerateName());
+            return new HumanPlayerState(controller, index, nameGenerator.GenerateName(index));
         }
 
         protected bool AddPlayer(IController controller)
@@ -143,17 +144,8 @@ namespace MrBoom
             }
             else
             {
-                for (int i = 0; i < players.Count; i++)
-                {
-                    if (players[i].IsReplaceble)
-                    {
-                        players[i] = CreatePlayer(i, controller);
-
-                        return true;
-                    }
-                }
-
-                return false;
+                players.Add(CreatePlayer(players.Count, controller));
+                return true;
             }
         }
 

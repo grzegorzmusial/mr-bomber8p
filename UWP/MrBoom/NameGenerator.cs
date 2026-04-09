@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Windows.Storage;
 
 namespace MrBoom
 {
@@ -9,23 +11,66 @@ namespace MrBoom
     {
         private readonly Random random;
 
-        private readonly List<string> names = new List<string>
-        {
-            "gin", "jai", "jay", "lad", "dre", "ash", "zev", "buz", "nox", "oak",
-            "coy", "eza", "fil", "kip", "aya", "jem", "roy", "rex", "ryu", "gus",
-            "cpp", "sus", "god", "guy", "bob", "jim", "mrb", "max"
-        };
 
         public NameGenerator(Random random)
         {
             this.random = random;
+            names = new List<string>(); // temporary empty list
         }
 
-        public string GenerateName()
+        public string GenerateName(int index)
         {
-            int index = random.Next(names.Count);
-            names.RemoveAt(index);
-            return names[index];
+            
+            var ret = names[index];
+            
+            return ret;
+        }
+
+        public async Task InitializeAsync()
+        {
+            names = await LoadNamesAsync();
+        }
+
+        public async Task<List<string>> LoadNamesAsync()
+        {
+            StorageFolder localFolder = ApplicationData.Current.LocalFolder;
+            List<string> names = new List<string>();
+
+            try
+            {
+                await GetNamesFromFile(localFolder, names);
+            }
+            catch (Exception)
+            {
+                await SaveNamesAsync();
+                await GetNamesFromFile(localFolder, names);
+            }
+
+            return names;
+        }
+
+        private static async Task GetNamesFromFile(StorageFolder localFolder, List<string> names)
+        {
+            StorageFile file = await localFolder.GetFileAsync("names.txt");
+            var lines = await FileIO.ReadLinesAsync(file);
+            names.AddRange(lines);
+        }
+
+        public async Task SaveNamesAsync()
+        {
+            // Get the app's local folder
+            StorageFolder localFolder = ApplicationData.Current.LocalFolder;
+
+            // Create or replace the file
+            StorageFile file = await localFolder.CreateFileAsync("names.txt", CreationCollisionOption.ReplaceExisting);
+
+            List<string> names = new List<string>
+            {
+                "ola", "ala", "gre", "srv", "zuk", "jer", "ami", "mar"
+            };
+
+            // Write all names, each on a new line
+            await FileIO.WriteLinesAsync(file, names);
         }
     }
 }

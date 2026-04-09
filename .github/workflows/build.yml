@@ -1,4 +1,4 @@
-name: Build MrBomber8P + Packageo
+name: Build MrBomber8P UWP + Package
 
 on:
   push:
@@ -13,45 +13,32 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        update: true
-        install: >-
-          git
-          make
-          mingw-w64-x86_64-gcc
-          mingw-w64-x86_64-SDL2
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
 
-    - name: Build
-      shell: msys2 {0}
+    - name: Restore NuGet
+      run: nuget restore
+
+    - name: Build solution
       run: |
-        echo "Building project..."
-        make clean || true
-        make -j4
+        msbuild /p:Configuration=Release /p:Platform=x64
+
+    - name: Find output
+      run: |
+        dir /s *.exe
+        dir /s *.appx
 
     - name: Prepare package
       run: |
         mkdir package
 
-        REM copy exe (try common locations)
-        if exist mr-bomber8p.exe copy mr-bomber8p.exe package\
-        if exist build\mr-bomber8p.exe copy build\mr-bomber8p.exe package\
-
-        REM copy assets if exist
-        if exist assets xcopy assets package\assets /E /I /Y
-        if exist data xcopy data package\data /E /I /Y
+        REM copy all build outputs
+        for /r %%i in (*.exe *.appx *.msix) do copy "%%i" package\
 
     - name: Create Install.ps1
       run: |
-        echo param([string]$installPath = "$env:LOCALAPPDATA\MrBomber8P") > package\Install.ps1
-        echo Write-Host "Installing Mr Bomber 8P..." >> package\Install.ps1
-        echo New-Item -ItemType Directory -Force -Path $installPath ^| Out-Null >> package\Install.ps1
-        echo Copy-Item -Recurse -Force "$PSScriptRoot\*" $installPath >> package\Install.ps1
-        echo $WshShell = New-Object -comObject WScript.Shell >> package\Install.ps1
-        echo $Shortcut = $WshShell.CreateShortcut("$env:PUBLIC\Desktop\Mr Bomber 8P.lnk") >> package\Install.ps1
-        echo $Shortcut.TargetPath = "$installPath\mr-bomber8p.exe" >> package\Install.ps1
-        echo $Shortcut.Save() >> package\Install.ps1
+        echo Write-Host "Installing Mr Bomber 8P (UWP)..." > package\Install.ps1
+        echo Get-ChildItem *.appx ^| ForEach-Object { Add-AppxPackage $_.FullName } >> package\Install.ps1
         echo Write-Host "Done!" >> package\Install.ps1
 
     - name: Zip
@@ -62,11 +49,3 @@ jobs:
       with:
         name: mr-bomber8p
         path: mr-bomber8p.zip
-
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: auto-build
-        files: mr-bomber8p.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
