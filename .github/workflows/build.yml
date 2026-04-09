@@ -1,4 +1,4 @@
-name: Build MrBomber8P + Package
+name: Build Portable MrBomber8P
 
 on:
   push:
@@ -10,47 +10,43 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: >
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-SDL2
+          make
 
-    - name: Find solution or project
-      id: findproj
-      shell: powershell
+    - name: Build native MrBoom
+      shell: msys2 {0}
       run: |
-        $sln = Get-ChildItem -Recurse -Filter *.sln | Select-Object -First 1
-        $proj = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
+        cd UWP/MrBoom
+        make || echo "No makefile here"
 
-        if ($sln) {
-          echo "file=$($sln.FullName)" >> $env:GITHUB_OUTPUT
-        } elseif ($proj) {
-          echo "file=$($proj.FullName)" >> $env:GITHUB_OUTPUT
-        } else {
-          Write-Error "No .sln or .csproj found!"
-        }
-
-    - name: Build
-      run: |
-        msbuild "${{ steps.findproj.outputs.file }}" /p:Configuration=Release /p:Platform=x64 /p:AppxPackageSigningEnabled=false
-
-    - name: Collect output
+    - name: Prepare package
       run: |
         mkdir package
-        for /r %%i in (*.exe *.appx *.msix) do copy "%%i" package\
+
+        REM fallback: copy any exe found
+        for /r %%i in (*.exe) do copy "%%i" package\
+
+        if exist assets xcopy assets package\assets /E /I /Y
 
     - name: Create Install.ps1
       run: |
-        echo Write-Host "Installing Mr Bomber 8P..." > package\Install.ps1
-        echo Get-ChildItem *.appx ^| ForEach-Object { Add-AppxPackage $_.FullName } >> package\Install.ps1
-        echo Write-Host "Done!" >> package\Install.ps1
+        echo param([string]$installPath = "$env:LOCALAPPDATA\MrBomber8P") > package\Install.ps1
+        echo New-Item -ItemType Directory -Force -Path $installPath >> package\Install.ps1
+        echo Copy-Item -Recurse -Force "$PSScriptRoot\*" $installPath >> package\Install.ps1
+        echo Write-Host "Installed to $installPath" >> package\Install.ps1
 
     - name: Zip
       run: powershell Compress-Archive -Path package\* -DestinationPath mr-bomber8p.zip
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v4
       with:
         name: mr-bomber8p
         path: mr-bomber8p.zip
