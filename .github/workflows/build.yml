@@ -1,4 +1,4 @@
-name: Build MrBomber8P UWP + Package
+name: Build MrBomber8P + Package
 
 on:
   push:
@@ -16,28 +16,33 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Restore NuGet
-      run: nuget restore
-
-    - name: Build solution
+    - name: Find solution or project
+      id: findproj
+      shell: powershell
       run: |
-        msbuild /p:Configuration=Release /p:Platform=x64
+        $sln = Get-ChildItem -Recurse -Filter *.sln | Select-Object -First 1
+        $proj = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
 
-    - name: Find output
+        if ($sln) {
+          echo "file=$($sln.FullName)" >> $env:GITHUB_OUTPUT
+        } elseif ($proj) {
+          echo "file=$($proj.FullName)" >> $env:GITHUB_OUTPUT
+        } else {
+          Write-Error "No .sln or .csproj found!"
+        }
+
+    - name: Build
       run: |
-        dir /s *.exe
-        dir /s *.appx
+        msbuild "${{ steps.findproj.outputs.file }}" /p:Configuration=Release /p:Platform=x64 /p:AppxPackageSigningEnabled=false
 
-    - name: Prepare package
+    - name: Collect output
       run: |
         mkdir package
-
-        REM copy all build outputs
         for /r %%i in (*.exe *.appx *.msix) do copy "%%i" package\
 
     - name: Create Install.ps1
       run: |
-        echo Write-Host "Installing Mr Bomber 8P (UWP)..." > package\Install.ps1
+        echo Write-Host "Installing Mr Bomber 8P..." > package\Install.ps1
         echo Get-ChildItem *.appx ^| ForEach-Object { Add-AppxPackage $_.FullName } >> package\Install.ps1
         echo Write-Host "Done!" >> package\Install.ps1
 
