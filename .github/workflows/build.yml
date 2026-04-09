@@ -28,13 +28,21 @@ jobs:
         make || echo "No makefile here"
 
     - name: Prepare package
-      run: |
-        mkdir package
+  shell: powershell
+  run: |
+    New-Item -ItemType Directory -Force -Path package | Out-Null
 
-        REM fallback: copy any exe found
-        for /r %%i in (*.exe) do copy "%%i" package\
+    Get-ChildItem -Recurse -Filter *.exe | ForEach-Object {
+        Copy-Item $_.FullName -Destination package -Force
+    }
 
-        if exist assets xcopy assets package\assets /E /I /Y
+    if (Test-Path assets) {
+        Copy-Item -Recurse -Force assets package\assets
+    }
+
+    if (Test-Path data) {
+        Copy-Item -Recurse -Force data package\data
+    }
 
     - name: Create Install.ps1
       run: |
