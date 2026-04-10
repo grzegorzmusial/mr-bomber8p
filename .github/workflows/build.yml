@@ -14,36 +14,24 @@ jobs:
       SOLUTION: UWP/MrBoom.sln
       CONFIGURATION: Release
       PLATFORM: x64
+      UWP_PFX_BASE64: ${{ secrets.UWP_PFX_BASE64 }}
+      UWP_PFX_PASSWORD: ${{ secrets.UWP_PFX_PASSWORD }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      # ...
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
-
-      - name: Restore NuGet
-        run: nuget restore "${{ env.SOLUTION }}"
-
-      # Optional signing (recommended for installable packages)
-      # Add repo secrets:
-      # - UWP_PFX_BASE64: base64 of your .pfx
-      # - UWP_PFX_PASSWORD: password for that .pfx
       - name: Import signing certificate (optional)
-        if: ${{ secrets.UWP_PFX_BASE64 != '' }}
+        if: ${{ env.UWP_PFX_BASE64 != '' }}
         shell: pwsh
         run: |
           $pfxPath = Join-Path $env:RUNNER_TEMP "signing.pfx"
-          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String("${{ secrets.UWP_PFX_BASE64 }}"))
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:UWP_PFX_BASE64))
           echo "PFX_PATH=$pfxPath" >> $env:GITHUB_ENV
 
       - name: Build + Package (Appx/MSIX)
         shell: pwsh
         run: |
-          $signEnabled = if ("${{ secrets.UWP_PFX_BASE64 }}") { "true" } else { "false" }
+          $signEnabled = if ($env:UWP_PFX_BASE64) { "true" } else { "false" }
 
           $args = @(
             "${{ env.SOLUTION }}",
@@ -60,7 +48,7 @@ jobs:
 
           if ($signEnabled -eq "true") {
             $args += "/p:PackageCertificateKeyFile=$env:PFX_PATH"
-            $args += "/p:PackageCertificatePassword=${{ secrets.UWP_PFX_PASSWORD }}"
+            $args += "/p:PackageCertificatePassword=$env:UWP_PFX_PASSWORD"
           }
 
           msbuild @args
