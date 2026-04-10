@@ -28,6 +28,11 @@ jobs:
           make
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
+
+    - name: Install Windows 10 SDK (UWP)
+      uses: GuillaumeFalourd/setup-windows10-sdk-action@v1
+      with:
+        sdk-version: 19041
       
     - name: Build UWP package
       shell: cmd
