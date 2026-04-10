@@ -29,25 +29,20 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Install Windows 10 SDK (UWP)
-      uses: GuillaumeFalourd/setup-windows10-sdk-action@v1
-      with:
-        sdk-version: 19041
+
       
-    - name: Build UWP package
+    - name: Build UWP (proper VS environment)
       shell: cmd
       run: |
-        echo Building...
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
 
-        for /r %%i in (*.sln) do (
-          msbuild "%%i" /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:UapAppxPackageBuildMode=StoreUpload /p:AppxPackageDir=AppPackages\ /p:AppxPackageSigningEnabled=false
-        )
-
-    - name: Build native MrBoom
-      shell: msys2 {0}
-      run: |
-        cd UWP/MrBoom
-        make || echo "No makefile here"
+        msbuild UWP\MrBoom.sln ^
+          /p:Configuration=Release ^
+          /p:Platform=x64 ^
+          /p:AppxBundle=Always ^
+          /p:UapAppxPackageBuildMode=StoreUpload ^
+          /p:AppxPackageDir=AppPackages\ ^
+          /p:AppxPackageSigningEnabled=false
 
     - name: Prepare package
       shell: powershell
