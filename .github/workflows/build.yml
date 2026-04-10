@@ -1,58 +1,48 @@
-name: Build Portable MrBomber8P
+name: Build MrBoom UWP
 
 on:
   push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-2022
-    
-    steps:
-    - uses: actions/checkout@v4
 
-    - name: Clean project
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    # ---------------------------
+    # Clean (optional but safe)
+    # ---------------------------
+    - name: Clean
       shell: cmd
       run: |
         if exist UWP\MrBoom\bin rmdir /s /q UWP\MrBoom\bin
         if exist UWP\MrBoom\obj rmdir /s /q UWP\MrBoom\obj
 
-    - name: Setup MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        update: true
-        install: >
-          mingw-w64-x86_64-gcc
-          mingw-w64-x86_64-SDL2
-          make
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Install UWP build support
-      shell: powershell
-      run: |
-        choco install visualstudio2022buildtools -y
-
-        choco install visualstudio2022-workload-universalbuildtools -y
-
-    - name: Ensure UWP components
+    # ---------------------------
+    # IMPORTANT FIX for MSB3644
+    # ---------------------------
+    - name: Set Windows SDK environment
       shell: cmd
       run: |
-        "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vs_installer.exe" modify ^
-          --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools" ^
-          --add Microsoft.VisualStudio.ComponentGroup.UWP.VC ^
-          --quiet --wait
+        echo Setting Windows SDK paths...
+        set WindowsSdkDir=C:\Program Files (x86)\Windows Kits\10\
+        set WindowsSDKVersion=10.0.19041.0
 
-    - name: Install Windows SDK 19041
-      shell: powershell
-      run: |
-        choco install windows-sdk-10.0 --version=19041.0 -y
-          
-    - name: Build UWP
+        echo Windows SDK Dir: %WindowsSdkDir%
+
+    # ---------------------------
+    # Build UWP
+    # ---------------------------
+    - name: Build UWP Solution
       shell: cmd
       run: |
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat"
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
 
         msbuild UWP\MrBoom.sln ^
           /p:Configuration=Release ^
@@ -60,46 +50,15 @@ jobs:
           /p:AppxBundle=Always ^
           /p:UapAppxPackageBuildMode=StoreUpload ^
           /p:AppxPackageDir=AppPackages\ ^
-          /p:AppxPackageSigningEnabled=false
+          /p:AppxPackageSigningEnabled=false ^
+          /p:WindowsSDKVersion=10.0.19041.0
 
-    - name: Prepare package
-      shell: powershell
-      run: |
-        New-Item -ItemType Directory -Force -Path package | Out-Null
-
-        # Find AppPackages output
-        $pkg = Get-ChildItem -Recurse -Directory -Filter "*Test*" | Select-Object -First 1
-
-        if ($pkg) {
-            Copy-Item -Recurse -Force $pkg.FullName "package\MrBoom"
-        } else {
-            Write-Error "No AppPackages folder found!"
-        }
-
-    - name: Create Install.ps1
-      run: |
-        echo param([string]$installPath = "$env:LOCALAPPDATA\MrBomber8P") > package\Install.ps1
-        echo New-Item -ItemType Directory -Force -Path $installPath >> package\Install.ps1
-        echo Copy-Item -Recurse -Force "$PSScriptRoot\*" $installPath >> package\Install.ps1
-        echo Write-Host "Installed to $installPath" >> package\Install.ps1
-
-    - name: Zip
-      run: powershell Compress-Archive -Path package\* -DestinationPath mr-bomber8p.zip
-
-    - name: Collect AppPackages
-      shell: powershell
-      run: |
-        New-Item -ItemType Directory -Force -Path package | Out-Null
-
-        $pkg = Get-ChildItem -Recurse -Directory -Filter "AppPackages" | Select-Object -First 1
-
-        if ($pkg) {
-          Copy-Item -Recurse -Force $pkg.FullName "package\AppPackages"
-        } else {
-          Write-Error "No AppPackages found!"
-        }
-
-    - uses: actions/upload-artifact@v4
+    # ---------------------------
+    # Upload artifact
+    # ---------------------------
+    - name: Upload App Package
+      uses: actions/upload-artifact@v4
       with:
-        name: mr-bomber8p
-        path: mr-bomber8p.zip
+        name: MrBoom-UWP
+        path: |
+          UWP/AppPackages/**
