@@ -36,6 +36,17 @@ jobs:
 
         echo Windows SDK Dir: %WindowsSdkDir%
 
+    - name: Restore UWP references
+      shell: cmd
+      run: |
+        nuget install Microsoft.Windows.SDK.Contracts -OutputDirectory packages
+
+    - name: Set UWP reference path
+      shell: cmd
+      run: |
+        set ReferencePath=%CD%\packages\Microsoft.Windows.SDK.Contracts.10.0.19041.1\ref
+        echo %ReferencePath%
+
     # ---------------------------
     # Build UWP
     # ---------------------------
@@ -49,10 +60,8 @@ jobs:
           /p:Platform=x64 ^
           /p:AppxBundle=Always ^
           /p:UapAppxPackageBuildMode=StoreUpload ^
-          /p:AppxPackageDir=AppPackages\ ^
           /p:AppxPackageSigningEnabled=false ^
-          /p:WindowsSDKVersion=10.0.19041.0
-
+          /p:ReferencePath="%CD%\packages"
     # ---------------------------
     # Upload artifact
     # ---------------------------
