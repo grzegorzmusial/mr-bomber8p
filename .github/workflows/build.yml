@@ -12,6 +12,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Clean project
+      shell: cmd
+      run: |
+        if exist UWP\MrBoom\bin rmdir /s /q UWP\MrBoom\bin
+        if exist UWP\MrBoom\obj rmdir /s /q UWP\MrBoom\obj
+
     - name: Setup MSYS2
       uses: msys2/setup-msys2@v2
       with:
