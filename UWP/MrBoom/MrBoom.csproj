@@ -1,19 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
-    <TargetPlatformVersion>10.0.19041.0</TargetPlatformVersion>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+  <TargetFramework>uap10.0</TargetFramework>
 
-    <OutputType>AppContainerExe</OutputType>
-    <RootNamespace>MrBoom</RootNamespace>
-    <AssemblyName>MrBoom</AssemblyName>
+  <TargetPlatformVersion>10.0.19041.0</TargetPlatformVersion>
+  <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
 
-    <Platforms>x86;x64</Platforms>
-    <Configurations>Debug;Release</Configurations>
+  <OutputType>AppContainerExe</OutputType>
+  <RootNamespace>MrBoom</RootNamespace>
+  <AssemblyName>MrBoom</AssemblyName>
 
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-  </PropertyGroup>
+  <Platforms>x86;x64</Platforms>
+  <Configurations>Debug;Release</Configurations>
+
+  <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+</PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform" Version="6.2.14" />
