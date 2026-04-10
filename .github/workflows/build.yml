@@ -1,73 +1,78 @@
-name: Build MrBoom UWP
+name: Build UWP package
 
 on:
-  push:
   workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
 
 jobs:
-  build:
+  build-uwp:
     runs-on: windows-2022
 
+    env:
+      SOLUTION: UWP/MrBoom.sln
+      CONFIGURATION: Release
+      PLATFORM: x64
+
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
 
-    # ---------------------------
-    # Clean (optional but safe)
-    # ---------------------------
-    - name: Clean
-      shell: cmd
-      run: |
-        if exist UWP\MrBoom\bin rmdir /s /q UWP\MrBoom\bin
-        if exist UWP\MrBoom\obj rmdir /s /q UWP\MrBoom\obj
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
 
-    # ---------------------------
-    # IMPORTANT FIX for MSB3644
-    # ---------------------------
-    - name: Set Windows SDK environment
-      shell: cmd
-      run: |
-        echo Setting Windows SDK paths...
-        set WindowsSdkDir=C:\Program Files (x86)\Windows Kits\10\
-        set WindowsSDKVersion=10.0.19041.0
+      - name: Restore NuGet
+        run: nuget restore "${{ env.SOLUTION }}"
 
-        echo Windows SDK Dir: %WindowsSdkDir%
+      # Optional signing (recommended for installable packages)
+      # Add repo secrets:
+      # - UWP_PFX_BASE64: base64 of your .pfx
+      # - UWP_PFX_PASSWORD: password for that .pfx
+      - name: Import signing certificate (optional)
+        if: ${{ secrets.UWP_PFX_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP "signing.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String("${{ secrets.UWP_PFX_BASE64 }}"))
+          echo "PFX_PATH=$pfxPath" >> $env:GITHUB_ENV
 
-    - name: Restore UWP references
-      shell: cmd
-      run: |
-        nuget install Microsoft.Windows.SDK.Contracts -OutputDirectory packages
+      - name: Build + Package (Appx/MSIX)
+        shell: pwsh
+        run: |
+          $signEnabled = if ("${{ secrets.UWP_PFX_BASE64 }}") { "true" } else { "false" }
 
-    - name: Set UWP reference path
-      shell: cmd
-      run: |
-        set ReferencePath=%CD%\packages\Microsoft.Windows.SDK.Contracts.10.0.19041.1\ref
-        echo %ReferencePath%
+          $args = @(
+            "${{ env.SOLUTION }}",
+            "/m",
+            "/t:Restore,Build",
+            "/p:Configuration=${{ env.CONFIGURATION }}",
+            "/p:Platform=${{ env.PLATFORM }}",
+            "/p:GenerateAppxPackageOnBuild=true",
+            "/p:AppxBundle=Always",
+            "/p:AppxBundlePlatforms=${{ env.PLATFORM }}",
+            "/p:UapAppxPackageBuildMode=SideloadOnly",
+            "/p:AppxPackageSigningEnabled=$signEnabled"
+          )
 
-    # ---------------------------
-    # Build UWP
-    # ---------------------------
-    - name: Build UWP Solution
-      shell: cmd
-      run: |
-        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat"
+          if ($signEnabled -eq "true") {
+            $args += "/p:PackageCertificateKeyFile=$env:PFX_PATH"
+            $args += "/p:PackageCertificatePassword=${{ secrets.UWP_PFX_PASSWORD }}"
+          }
 
-        msbuild UWP\MrBoom.sln ^
-          /p:Configuration=Release ^
-          /p:Platform=x64 ^
-          /p:AppxBundle=Always ^
-          /p:UapAppxPackageBuildMode=StoreUpload ^
-          /p:AppxPackageSigningEnabled=false ^
-          /p:ReferencePath="%CD%\packages"
-    # ---------------------------
-    # Upload artifact
-    # ---------------------------
-    - name: Upload App Package
-      uses: actions/upload-artifact@v4
-      with:
-        name: MrBoom-UWP
-        path: |
-          UWP/AppPackages/**
+          msbuild @args
+
+      - name: Upload AppPackages artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uwp-apppackages
+          path: |
+            UWP/**/AppPackages/**
+            UWP/**/bin/${{ env.CONFIGURATION }}/**/*.appx
+            UWP/**/bin/${{ env.CONFIGURATION }}/**/*.msix
+            UWP/**/bin/${{ env.CONFIGURATION }}/**/*.appxbundle
+            UWP/**/bin/${{ env.CONFIGURATION }}/**/*.msixbundle
+          if-no-files-found: error
