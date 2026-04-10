@@ -20,18 +20,17 @@ jobs:
           mingw-w64-x86_64-gcc
           mingw-w64-x86_64-SDL2
           make
-
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
     - name: Build UWP package
+      shell: cmd
       run: |
-        msbuild "${{ steps.findproj.outputs.file }}" ^
-          /p:Configuration=Release ^
-          /p:Platform=x64 ^
-          /p:AppxBundle=Always ^
-          /p:UapAppxPackageBuildMode=StoreUpload ^
-          /p:AppxPackageDir=AppPackages\ ^
-          /p:AppxPackageSigningEnabled=false
-          /p:TargetFramework=uap10.0
-          /p:TargetPlatformVersion=10.0.19041.0
+        echo Building...
+
+        for /r %%i in (*.sln) do (
+          msbuild "%%i" /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Always /p:UapAppxPackageBuildMode=StoreUpload /p:AppxPackageDir=AppPackages\ /p:AppxPackageSigningEnabled=false
+        )
 
     - name: Build native MrBoom
       shell: msys2 {0}
@@ -62,6 +61,19 @@ jobs:
 
     - name: Zip
       run: powershell Compress-Archive -Path package\* -DestinationPath mr-bomber8p.zip
+
+    - name: Collect AppPackages
+      shell: powershell
+      run: |
+        New-Item -ItemType Directory -Force -Path package | Out-Null
+
+        $pkg = Get-ChildItem -Recurse -Directory -Filter "AppPackages" | Select-Object -First 1
+
+        if ($pkg) {
+          Copy-Item -Recurse -Force $pkg.FullName "package\AppPackages"
+        } else {
+          Write-Error "No AppPackages found!"
+        }
 
     - uses: actions/upload-artifact@v4
       with:
