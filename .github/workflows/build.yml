@@ -29,6 +29,21 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
+    - name: Install UWP build support
+      shell: powershell
+      run: |
+        choco install visualstudio2022buildtools -y
+
+        choco install visualstudio2022-workload-universalbuildtools -y
+
+    - name: Ensure UWP components
+      shell: cmd
+      run: |
+        "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vs_installer.exe" modify ^
+          --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools" ^
+          --add Microsoft.VisualStudio.ComponentGroup.UWP.VC ^
+          --quiet --wait
+
     - name: Install Windows SDK 19041
       shell: powershell
       run: |
