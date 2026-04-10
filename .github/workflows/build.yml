@@ -21,6 +21,18 @@ jobs:
           mingw-w64-x86_64-SDL2
           make
 
+    - name: Build UWP package
+      run: |
+        msbuild "${{ steps.findproj.outputs.file }}" ^
+          /p:Configuration=Release ^
+          /p:Platform=x64 ^
+          /p:AppxBundle=Always ^
+          /p:UapAppxPackageBuildMode=StoreUpload ^
+          /p:AppxPackageDir=AppPackages\ ^
+          /p:AppxPackageSigningEnabled=false
+          /p:TargetFramework=uap10.0
+          /p:TargetPlatformVersion=10.0.19041.0
+
     - name: Build native MrBoom
       shell: msys2 {0}
       run: |
@@ -32,16 +44,13 @@ jobs:
       run: |
         New-Item -ItemType Directory -Force -Path package | Out-Null
 
-        Get-ChildItem -Recurse -Filter *.exe | ForEach-Object {
-          Copy-Item $_.FullName -Destination package -Force
-        }
+        # Find AppPackages output
+        $pkg = Get-ChildItem -Recurse -Directory -Filter "*Test*" | Select-Object -First 1
 
-        if (Test-Path "assets") {
-          Copy-Item -Recurse -Force "assets" "package\assets"
-        }
-
-        if (Test-Path "data") {
-          Copy-Item -Recurse -Force "data" "package\data"
+        if ($pkg) {
+            Copy-Item -Recurse -Force $pkg.FullName "package\MrBoom"
+        } else {
+            Write-Error "No AppPackages folder found!"
         }
 
     - name: Create Install.ps1
