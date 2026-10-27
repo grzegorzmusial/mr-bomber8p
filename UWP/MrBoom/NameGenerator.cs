@@ -10,6 +10,7 @@ namespace MrBoom
     public class NameGenerator
     {
         private readonly Random random;
+        private List<string> names;
 
 
         public NameGenerator(Random random)
