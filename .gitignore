@@ -4,3 +4,10 @@
 *.csproj.user
 *.vcxproj.user
 *.user
+
+# Windows build outputs
+**/bin/
+**/obj/
+AppPackages/
+*.pfx
+Mr-Bomber-Windows-x64.zip
